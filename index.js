@@ -22,6 +22,8 @@ async function run() {
   try {
     const appointmentOptionCollection = client.db("doctorsPortal").collection("appointmentOptions");
 
+    const usersCollection = client.db("doctorsPortal").collection("users");
+
     //will create bookingsCollection if not in DB or get it into bookings collection variable
     const bookingsCollection = client.db("doctorsPortal").collection("bookings");
 
@@ -47,6 +49,14 @@ async function run() {
       res.send(options);
     });
 
+    //get booking data
+    app.get("/bookings", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const bookings = await bookingsCollection.find(query).toArray();
+      res.send(bookings);
+    });
+
     //get data from client and create booking data in db
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
@@ -63,6 +73,13 @@ async function run() {
       }
 
       const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
+    });
+
+    //users
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const result = await usersCollection.insertOne(user);
       res.send(result);
     });
   } finally {
