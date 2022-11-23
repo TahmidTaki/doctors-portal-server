@@ -22,9 +22,48 @@ async function run() {
   try {
     const appointmentOptionCollection = client.db("doctorsPortal").collection("appointmentOptions");
 
-    app.get("/", async (req, res) => {
+    //will create bookingsCollection if not in DB or get it into bookings collection variable
+    const bookingsCollection = client.db("doctorsPortal").collection("bookings");
+
+    app.get("/appointmentOptions", async (req, res) => {
+      const date = req.query.date;
+      console.log(date);
       const query = {};
       const options = await appointmentOptionCollection.find(query).toArray();
+
+      //get the bookings of the provided date
+      const bookingQuery = { appointmentDate: date };
+      const alreadyBooked = await bookingsCollection.find(bookingQuery).toArray();
+
+      options.forEach((option) => {
+        const optionBooked = alreadyBooked.filter((book) => book.treatment === option.name);
+
+        const bookedSlots = optionBooked.map((book) => book.slot);
+        const remainingSLots = option.slots.filter((slot) => !bookedSlots.includes(slot));
+
+        option.slots = remainingSLots;
+        // console.log(option.name, remainingSLots.length);
+      });
+      res.send(options);
+    });
+
+    //get data from client and create booking data in db
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const query = {
+        appointmentDate: booking.appointmentDate,
+        email: booking.email,
+        treatment: booking.treatment,
+      };
+      const alreadyBooked = await bookingsCollection.find(query).toArray();
+
+      if (alreadyBooked.length) {
+        const message = `You already have appointment on ${booking.appointmentDate}`;
+        return res.send({ acknowledged: false, message });
+      }
+
+      const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
     });
   } finally {
   }
